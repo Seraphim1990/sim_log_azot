@@ -1,0 +1,14 @@
+# Головний Cargo.toml для workspace
+# Він об'єднує всі крейти в один проект
+
+[workspace]
+members = [
+    "logger",           # Основний крейт з кодом
+    "logger_derive",    # Derive макроси
+    "test_app",         # Тестовий додаток
+]
+resolver = "2"
+
+# Спільні залежності для всіх крейтів (опціонально)
+[workspace.dependencies]
+chrono = "0.4"

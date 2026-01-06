@@ -1,0 +1,21 @@
+[package]
+name = "sample_logger"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Лінкуємо derive крейт
+logger_derive = { path = "../logger_derive" }
+
+# Основні залежності
+chrono = { workspace = true }
+
+# Ре-експортуємо для макросів
+paste = "1.0"
+
+# Для кольорів
+colored = "2.0"
+
+# Для увімкнення ANSI в Windows (КРИТИЧНО!)
+[target.'cfg(windows)'.dependencies]
+enable-ansi-support = "0.2"

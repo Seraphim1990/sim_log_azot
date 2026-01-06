@@ -1,0 +1,19 @@
+[package]
+name = "logger_derive"
+version = "0.1.0"
+edition = "2021"
+
+# ⚠️ КРИТИЧНО ВАЖЛИВО!
+# proc-macro = true означає що цей крейт ТІЛЬКИ для макросів
+[lib]
+proc-macro = true
+
+[dependencies]
+# Для парсингу Rust коду
+syn = { version = "2.0", features = ["full"] }
+
+# Для генерації Rust коду
+quote = "1.0"
+
+# Допоміжні типи
+proc-macro2 = "1.0"
