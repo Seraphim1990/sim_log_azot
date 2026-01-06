@@ -42,19 +42,17 @@ impl LogHandler for FileHandler {
 
 // Кастомні рівні
 #[derive(LogLevel)]
-#[log_level(color = "\033[32m", heading = "EVENT")]
+#[log_level(color = "\033[32m", heading = "EVENT", level = 0)]
 struct Event;
 
 #[derive(LogLevel)]
-#[log_level(color = "\033[33m", heading = "WARN")]
+#[log_level(color = "\033[33m", heading = "WARN", level = 0)]
 struct Warning;
 
 fn main() {
     // Ініціалізуємо з файловим логером
     // Консоль + файл одночасно!
-    init_logger_with_handlers(vec![
-        Box::new(FileHandler::new("app.log"))
-    ]);
+    init_logger_with_handlers(vec![Box::new(FileHandler::new("app.log"))], 0);
     
     println!("=== Логування в консоль + файл ===\n");
     
