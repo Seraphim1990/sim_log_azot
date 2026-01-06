@@ -1,5 +1,0 @@
-# Project exclude paths
-/target/
-.gitignore
-.idea
-{logger
