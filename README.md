@@ -119,7 +119,7 @@ fn main() {
     let handles: Vec<_> = (0..10)
         .map(|i| {
             thread::spawn(move || {
-                InfoLog(format!("Потік {}", i));
+                Info.log(format!("Потік {}", i));
             })
         })
         .collect();

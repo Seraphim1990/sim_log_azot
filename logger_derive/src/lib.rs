@@ -16,7 +16,7 @@ use syn::{parse_macro_input, DeriveInput, Lit};
 /// struct Event;
 /// 
 /// // Тепер можна:
-/// EventLog("Щось сталось");
+/// Event.log("Щось сталось");
 /// ```
 #[proc_macro_derive(LogLevel, attributes(log_level))]
 //                  ^^^^^^^^  ^^^^^^^^^^^^^^^^^^^

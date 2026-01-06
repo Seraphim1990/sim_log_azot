@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 # Лінкуємо наш логер
 sample_logger = { path = "../logger" }
+rand = "0.8"

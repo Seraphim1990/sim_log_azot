@@ -3,6 +3,8 @@
 // ============================================================
 
 use sample_logger::{init_logger, LogLevel};
+use rand::Rng;
+
 
 // ============================================================
 // КАСТОМНІ РІВНІ ЛОГУВАННЯ через derive
@@ -23,6 +25,7 @@ struct Critical;
 #[derive(LogLevel)]
 #[log_level(color = "\033[31m", heading = "INFO")]
 struct Info;
+
 
 fn main() {
     // Ініціалізуємо логер
@@ -47,9 +50,10 @@ fn main() {
                         3 => Info.log(format!("Потік {} - інфо {}", i, j)),
                         _ => unreachable!(),
                     }
-                    
-                    // Невеликий sleep щоб побачити чергування
-                    std::thread::sleep(std::time::Duration::from_millis(5));
+
+                    let sleep_ms = rand::thread_rng().gen_range(2..=10);
+                    std::thread::sleep(std::time::Duration::from_millis(sleep_ms));
+                    //std::thread::sleep(std::time::Duration::from_millis(5));
                 }
             })
         })
