@@ -11,32 +11,35 @@ use rand::Rng;
 // ============================================================
 
 #[derive(LogLevel)]
-#[log_level(color = "\033[32m", heading = "EVENT")]
+#[log_level(color = "\033[32m", heading = "EVENT", level = 4)]
 struct Event;
 
 #[derive(LogLevel)]
-#[log_level(color = "\033[33m", heading = "WARN")]
+#[log_level(color = "\033[33m", heading = "WARN", level = 3)]
 struct Warning;
 
 #[derive(LogLevel)]
-#[log_level(color = "\033[35m", heading = "CRITICAL")]
+#[log_level(color = "\033[35m", heading = "CRITICAL", level = 2)]
 struct Critical;
 
 #[derive(LogLevel)]
-#[log_level(color = "\033[31m", heading = "INFO")]
+#[log_level(color = "\033[31m", heading = "INFO", level = 1)]
 struct Info;
 
 
 fn main() {
+
+    let rand_lvl = rand::thread_rng().gen_range(1..=4);
+    println!("RNG Lvl: {}", rand_lvl);
     // Ініціалізуємо логер
-    init_logger();
+    init_logger(rand_lvl);
     
     println!("=== Стрес-тест: 400 потоків ===\n");
     
     // ============================================================
-    // 40 потоків які одночасно логують
+    // 400 потоків які одночасно логують
     // ============================================================
-    let handles: Vec<_> = (0..40)
+    let handles: Vec<_> = (0..400)
         .map(|i| {
             std::thread::spawn(move || {
                 // Кожен потік робить 10 логів
@@ -51,7 +54,7 @@ fn main() {
                         _ => unreachable!(),
                     }
 
-                    let sleep_ms = rand::thread_rng().gen_range(2..=10);
+                    let sleep_ms = rand::thread_rng().gen_range(2..=15);
                     std::thread::sleep(std::time::Duration::from_millis(sleep_ms));
                     //std::thread::sleep(std::time::Duration::from_millis(5));
                 }
@@ -64,7 +67,7 @@ fn main() {
         handle.join().unwrap();
     }
     
-    println!("\n=== Тест завершено: 400 повідомлень з 40 потоків ===");
+    println!("\n=== Тест завершено: 4000 повідомлень з 400 потоків ===");
     
     // Даємо час логеру обробити всі повідомлення
     std::thread::sleep(std::time::Duration::from_millis(5000));

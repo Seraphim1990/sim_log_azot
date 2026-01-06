@@ -1,6 +1,6 @@
 # Sample Logger - Extensible Logging System
 
-Простий і розширюваний логер для Rust з підтримкою кастомних рівнів логування через derive макроси.
+Простий і розширюваний логер для Rust з підтримкою кастомних рівнів логування через derive макроси, фільтрацією за рівнем та кастомними хендлерами.
 
 ## 📁 Структура проекту
 
@@ -16,7 +16,7 @@ logger_workspace/
 │   ├── Cargo.toml
 │   └── src/
 │       └── lib.rs          # #[derive(LogLevel)]
-└── test_app/               # Тестовий додаток
+└── test_app/               # Тестовий додаток (стрес-тест)
     ├── Cargo.toml
     └── src/
         └── main.rs
@@ -24,46 +24,73 @@ logger_workspace/
 
 ## 🚀 Швидкий старт
 
-### 1. Копіюємо структуру
+### 1. Додай в Cargo.toml
 
-```bash
-# Скопіюй всю папку logger_workspace в свій проект
-# Наприклад:
-cp -r logger_workspace D:/RustPjt/
-cd D:/RustPjt/logger_workspace
+```toml
+[dependencies]
+sample_logger = { path = "../logger" }
 ```
 
-### 2. Компілюємо workspace
-
-```bash
-# В корені logger_workspace/
-cargo build
-```
-
-### 3. Запускаємо тест
-
-```bash
-cd test_app
-cargo run
-```
-
-## 📝 Використання
-
-### Базове використання (тільки консоль)
+### 2. Базове використання
 
 ```rust
 use sample_logger::{init_logger, LogLevel};
 
 #[derive(LogLevel)]
-#[log_level(color = "\033[32m", heading = "EVENT")]
+#[log_level(color = "\033[32m", heading = "EVENT", level = 0)]
 struct Event;
 
+#[derive(LogLevel)]
+#[log_level(color = "\033[31m", heading = "ERROR", level = 3)]
+struct Error;
+
 fn main() {
-    init_logger();
+    // Ініціалізація: показувати логи з рівнем >= 0 (всі)
+    init_logger(0);
     
     Event.log("Когенератор запустився");
+    Error.log("Критична помилка!");
 }
 ```
+
+## 📝 Детальне використання
+
+### Фільтрація за рівнем логування
+
+```rust
+use sample_logger::{init_logger, LogLevel};
+
+#[derive(LogLevel)]
+#[log_level(color = "\033[37m", heading = "DEBUG", level = 0)]
+struct Debug;
+
+#[derive(LogLevel)]
+#[log_level(color = "\033[34m", heading = "INFO", level = 1)]
+struct Info;
+
+#[derive(LogLevel)]
+#[log_level(color = "\033[33m", heading = "WARN", level = 2)]
+struct Warning;
+
+#[derive(LogLevel)]
+#[log_level(color = "\033[31m", heading = "ERROR", level = 3)]
+struct Error;
+
+fn main() {
+    // Показувати тільки WARN (2) і вище
+    init_logger(2);
+    
+    Debug.log("Не покаже");    // level 0 < 2
+    Info.log("Не покаже");     // level 1 < 2
+    Warning.log("Покаже!");    // level 2 >= 2
+    Error.log("Покаже!");      // level 3 >= 2
+}
+```
+
+**Рівні можна задавати довільно:**
+- Чим більше число - тим важливіший лог
+- `init_logger(level)` - показує логи з `level` і вище
+- Можна використовувати будь-які числа: 0, 1, 2, 10, 100, etc.
 
 ### Кастомні хендлери (консоль + файл)
 
@@ -77,8 +104,20 @@ struct FileHandler {
     file: std::fs::File,
 }
 
+impl FileHandler {
+    fn new(path: &str) -> Self {
+        let file = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .expect("Failed to open log file");
+        Self { file }
+    }
+}
+
 impl LogHandler for FileHandler {
     fn handle(&mut self, record: &LogRecord) {
+        // Пишемо в файл без кольорів
         writeln!(
             self.file,
             "[{}] {} - {}",
@@ -93,33 +132,46 @@ impl LogHandler for FileHandler {
     }
 }
 
+// Рекомендується реалізувати Drop для коректного закриття файлу
+impl Drop for FileHandler {
+    fn drop(&mut self) {
+        self.flush();
+        // file автоматично закриється
+    }
+}
+
 #[derive(LogLevel)]
-#[log_level(color = "\033[32m", heading = "EVENT")]
+#[log_level(color = "\033[32m", heading = "EVENT", level = 0)]
 struct Event;
 
 fn main() {
     // Консоль + файл одночасно!
-    init_logger_with_handlers(vec![
-        Box::new(FileHandler::new("app.log"))
-    ]);
+    init_logger_with_handlers(
+        vec![Box::new(FileHandler::new("app.log"))],
+        0  // мінімальний рівень
+    );
     
     Event.log("Запис йде в консоль І файл!");
 }
 ```
 
-### Thread-safe
+### Thread-safe логування
 
 ```rust
-use sample_logger::{init_logger, InfoLog};
+use sample_logger::{init_logger, LogLevel};
 use std::thread;
 
+#[derive(LogLevel)]
+#[log_level(color = "\033[32m", heading = "EVENT", level = 0)]
+struct Event;
+
 fn main() {
-    init_logger();
+    init_logger(0);
     
-    let handles: Vec<_> = (0..10)
+    let handles: Vec<_> = (0..100)
         .map(|i| {
             thread::spawn(move || {
-                Info.log(format!("Потік {}", i));
+                Event.log(format!("Потік {}", i));
             })
         })
         .collect();
@@ -132,49 +184,76 @@ fn main() {
 
 ## 🎨 Кольори ANSI
 
-- `\033[31m` - Червоний (ERROR)
-- `\033[32m` - Зелений (EVENT, SUCCESS)
-- `\033[33m` - Жовтий (WARNING, DEBUG)
-- `\033[35m` - Фіолетовий (CRITICAL)
-- `\033[37m` - Білий (INFO)
+Підтримуються всі стандартні ANSI кольори:
+
+**Стандартні:**
+- `\033[30m` - Чорний
+- `\033[31m` - Червоний
+- `\033[32m` - Зелений
+- `\033[33m` - Жовтий
+- `\033[34m` - Синій
+- `\033[35m` - Фіолетовий (Magenta)
+- `\033[36m` - Блакитний (Cyan)
+- `\033[37m` - Білий
+
+**Яскраві (Bright):**
+- `\033[90m` - `\033[97m` - яскраві версії кольорів вище
+
+Кольори **автоматично працюють у Windows** завдяки `enable-ansi-support` крейту!
 
 ## 🔧 Як це працює
 
-### 1. Основний крейт (`logger/`)
-
-- Містить всю логіку логування
-- Ре-експортує `chrono`, `paste` для макросів
-- Ре-експортує derive макрос
-
-### 2. Derive крейт (`logger_derive/`)
-
-- `proc-macro = true` - ТІЛЬКИ для макросів
-- Генерує код на основі `#[derive(LogLevel)]`
-- Створює функції типу `EventLog()`
-
-### 3. Як працює derive
+### Derive макрос
 
 ```rust
-// Користувач пише:
+// Ти пишеш:
 #[derive(LogLevel)]
-#[log_level(color = "\033[32m", heading = "EVENT")]
+#[log_level(color = "\033[32m", heading = "EVENT", level = 0)]
 struct Event;
 
 // Макрос генерує:
-impl sample_logger::LogLevelTrait for Event {
+impl LogLevelTrait for Event {
     fn color(&self) -> &'static str { "\033[32m" }
     fn name(&self) -> &'static str { "EVENT" }
+    fn level(&self) -> i32 { 0 }
 }
 
-pub fn EventLog(msg: impl Into<String>) {
-    let log = sample_logger::LogRecord {
-        color: "\033[32m",
-        heading: "EVENT",
-        msg: msg.into(),
-        timestamp: sample_logger::chrono::Utc::now(),
-    };
-    sample_logger::internal_send_log(log);
+impl Event {
+    pub fn log(&self, msg: impl Into<String>) {
+        if !is_my_level(0) {
+            return; // Фільтрація за рівнем
+        }
+        let log = LogRecord {
+            color: "\033[32m",
+            heading: "EVENT",
+            msg: msg.into(),
+            timestamp: Utc::now(),
+        };
+        internal_send_log(log);
+    }
 }
+```
+
+### Архітектура
+
+1. **MPSC Channel**: Всі логи йдуть через `std::sync::mpsc::channel`
+2. **Окремий потік**: `logger_thread` обробляє логи асинхронно
+3. **Хендлери**: Кожен лог передається всім зареєстрованим хендлерам
+4. **Thread-safe**: `OnceLock` гарантує однократну ініціалізацію
+
+```
+User Code
+   ↓
+Event.log("msg")
+   ↓
+internal_send_log(LogRecord) → TX (Sender)
+   ↓
+[MPSC Channel]
+   ↓
+logger_thread ← RX (Receiver)
+   ↓
+for each handler:
+   handler.handle(record)
 ```
 
 ## 🐛 Troubleshooting
@@ -188,54 +267,101 @@ pub fn EventLog(msg: impl Into<String>) {
 use sample_logger::LogLevel;  // ← Додай це
 ```
 
-### Помилка: "unresolved import `sample_logger`"
+### Помилка: "Logger already initialized"
 
-**Причина:** Неправильний шлях в `Cargo.toml`
+**Причина:** Спроба ініціалізувати логер двічі
 
-**Рішення:**
-```toml
-[dependencies]
-sample_logger = { path = "../logger" }  # Перевір шлях!
+**Рішення:** Викликай `init_logger()` або `init_logger_with_handlers()` тільки раз на початку `main()`
+
+### Кольори не працюють у Windows
+
+**Рішення 1:** Використовуй Windows Terminal (підтримує ANSI з коробки)
+
+**Рішення 2:** Вже включено автоматично через `enable-ansi-support` крейт!
+
+## 📊 Стрес-тест
+
+Тестовий додаток (`test_app/`) демонструє:
+- **400 потоків** одночасно
+- **4000 повідомлень** (10 логів × 400 потоків)
+- Рандомні затримки для реалістичності
+- Рандомний мінімальний рівень при кожному запуску
+
+```bash
+cd test_app
+cargo run --release
 ```
 
-### Помилка: "proc-macro derive panicked"
+## 🎯 Features
 
-**Причина:** Відсутні атрибути `color` або `heading`
+- ✅ Кастомні рівні логування через derive макрос
+- ✅ Фільтрація за рівнем (показувати тільки WARN+)
+- ✅ Thread-safe (MPSC channel + окремий потік)
+- ✅ Кольори в консолі (Windows + Linux)
+- ✅ Розширювані хендлери (файл, мережа, БД)
+- ✅ Graceful shutdown (flush буферів)
+- ✅ Zero-cost abstractions (compile-time генерація)
 
-**Рішення:**
-```rust
-#[derive(LogLevel)]
-#[log_level(color = "\033[32m", heading = "EVENT")]  // ← Обидва обов'язкові!
-struct Event;
-```
+## 📚 API Reference
 
-## 📚 Додаткові можливості (TODO)
-
-- [ ] File logger (запис в файл)
-- [ ] Log rotation (ротація логів)
-- [ ] Фільтрація за рівнем (показувати тільки ERROR+)
-- [ ] Structured logging (JSON формат)
-- [ ] Async logging (tokio)
-
-## 🦀 Rust специфіка
-
-### Чому 2 крейти?
-
-**Proc-macro крейт (`proc-macro = true`) не може мати звичайний код!**
-
-Це обмеження Rust. Тому:
-- `logger/` - звичайний код
-- `logger_derive/` - тільки макроси
-
-### Чому `::sample_logger::` в макросі?
+### Функції ініціалізації
 
 ```rust
-::sample_logger::LogRecord  // Абсолютний шлях
+pub fn init_logger(min_level: i32)
+```
+Ініціалізує логер тільки з консольним хендлером.
+
+```rust
+pub fn init_logger_with_handlers(
+    custom_handlers: Vec<Box<dyn LogHandler>>, 
+    min_level: i32
+)
+```
+Ініціалізує логер з консольним + кастомними хендлерами.
+
+### Трейти
+
+```rust
+pub trait LogLevelTrait {
+    fn color(&self) -> &'static str;
+    fn name(&self) -> &'static str;
+    fn level(&self) -> i32;
+}
 ```
 
-Це гарантує що макрос знайде типи навіть якщо користувач не зробив `use`.
+```rust
+pub trait LogHandler: Send + 'static {
+    fn handle(&mut self, record: &LogRecord);
+    fn flush(&mut self) {}
+}
+```
+
+**Рекомендація:** Реалізуй `Drop` для коректного закриття ресурсів:
+```rust
+impl Drop for MyHandler {
+    fn drop(&mut self) {
+        self.flush();
+    }
+}
+```
+
+### Структури
+
+```rust
+pub struct LogRecord {
+    pub color: &'static str,
+    pub heading: &'static str,
+    pub msg: String,
+    pub timestamp: DateTime<Utc>,
+}
+```
 
 
 ## 🍺 Автор
 
-Створено через кров, сльози і пиво 🍻
+Створено через кров, сльози, макроси і пиво 🍻
+
+## 🙏 Подяки
+
+- **colored** крейт за підтримку кольорів
+- **enable-ansi-support** за автоматичне увімкнення ANSI в Windows

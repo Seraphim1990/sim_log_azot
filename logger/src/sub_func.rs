@@ -23,6 +23,7 @@ pub struct LogRecord {
 // ГЛОБАЛЬНИЙ КАНАЛ (приватний)
 // ============================================================
 static TX: OnceLock<Sender<LogRecord>> = OnceLock::new();
+static MIN_LEVEL_LOG: OnceLock<i32> = OnceLock::new();
 
 // ============================================================
 // КОНСОЛЬНИЙ ХЕНДЛЕР (за замовчуванням)
@@ -105,7 +106,7 @@ fn format_log_record_time(record: &LogRecord, pattern: &str) -> String {
 pub fn internal_send_log(data: LogRecord) {
     // Якщо TX не ініціалізований - ініціалізуємо з консольним хендлером
     if TX.get().is_none() {
-        init_logger();
+        init_logger(0);
     }
     
     let tx = TX.get().expect("Logger not initialized");
@@ -118,7 +119,7 @@ pub fn internal_send_log(data: LogRecord) {
 // ============================================================
 // ПУБЛІЧНА ФУНКЦІЯ: Ініціалізація логера (тільки консоль)
 // ============================================================
-pub fn init_logger() {
+pub fn init_logger(min_level: i32) {
     // Перевірка подвійної ініціалізації
     if TX.get().is_some() {
         panic!("Logger already initialized! Cannot initialize twice.");
@@ -139,12 +140,13 @@ pub fn init_logger() {
     });
     
     TX.set(tx).expect("Failed to set logger transmitter");
+    MIN_LEVEL_LOG.set(min_level).expect("Failed to set level log");
 }
 
 // ============================================================
 // ПУБЛІЧНА ФУНКЦІЯ: Ініціалізація з кастомними хендлерами
 // ============================================================
-pub fn init_logger_with_handlers(mut custom_handlers: Vec<Box<dyn LogHandler>>) {
+pub fn init_logger_with_handlers(mut custom_handlers: Vec<Box<dyn LogHandler>>, min_level: i32) {
     // Перевірка подвійної ініціалізації
     if TX.get().is_some() {
         panic!("Logger already initialized! Cannot initialize twice.");
@@ -168,4 +170,9 @@ pub fn init_logger_with_handlers(mut custom_handlers: Vec<Box<dyn LogHandler>>) 
     });
     
     TX.set(tx).expect("Failed to set logger transmitter");
+    MIN_LEVEL_LOG.set(min_level).expect("Failed to set level log");
+}
+
+pub fn is_my_level(lvl: i32) -> bool {
+    lvl >= *MIN_LEVEL_LOG.get().unwrap_or(&0)
 }
