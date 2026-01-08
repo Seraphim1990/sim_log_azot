@@ -21,7 +21,6 @@ pub use logger_derive::LogLevel;
 pub trait LogLevelTrait {
     fn color(&self) -> &'static str;
     fn name(&self) -> &'static str;
-
     fn level(&self) -> i32;
 }
 

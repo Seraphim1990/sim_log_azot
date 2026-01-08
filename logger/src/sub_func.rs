@@ -17,6 +17,7 @@ pub struct LogRecord {
     pub heading: &'static str,
     pub msg: String,
     pub timestamp: DateTime<Utc>,
+    pub lvl: i32,
 }
 
 // ============================================================

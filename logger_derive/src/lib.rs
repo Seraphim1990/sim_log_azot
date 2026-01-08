@@ -65,8 +65,7 @@ pub fn derive_log_level(input: TokenStream) -> TokenStream {
             fn name(&self) -> &'static str {
                 #heading
             }
-
-            // Тепер повертаємо i32 по значенню, без посилання
+            
             fn level(&self) -> i32 {
                 #my_level
             }
@@ -75,17 +74,20 @@ pub fn derive_log_level(input: TokenStream) -> TokenStream {
         impl #name {
             /// Логує повідомлення з цим рівнем
             pub fn log(&self, msg: impl Into<String>) {
-                if !::sample_logger::is_my_level(#my_level) {
+                if !self.is_active() {
                     return;
                 }
-
                 let log = ::sample_logger::LogRecord {
                     color: #color,
                     heading: #heading,
                     msg: msg.into(),
                     timestamp: ::sample_logger::chrono::Utc::now(),
+                    lvl: #my_level,
                 };
                 ::sample_logger::internal_send_log(log);
+            }
+            pub fn is_active(&self) -> bool {
+                ::sample_logger::is_my_level(#my_level)
             }
         }
     };
