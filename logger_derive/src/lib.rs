@@ -81,7 +81,7 @@ pub fn derive_log_level(input: TokenStream) -> TokenStream {
                     color: #color,
                     heading: #heading,
                     msg: msg.into(),
-                    timestamp: ::sample_logger::chrono::Utc::now(),
+                    timestamp: ::sample_logger::chrono::Local::now(),
                     lvl: #my_level,
                 };
                 ::sample_logger::internal_send_log(log);

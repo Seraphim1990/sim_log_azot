@@ -4,7 +4,7 @@
 
 use std::sync::mpsc::{Sender, Receiver, channel};
 use std::sync::OnceLock;
-use chrono::{DateTime, Datelike, Timelike, Utc};
+use chrono::{DateTime, Datelike, Timelike, Local};
 use colored::*;
 
 use crate::LogHandler;
@@ -16,7 +16,7 @@ pub struct LogRecord {
     pub color: &'static str,
     pub heading: &'static str,
     pub msg: String,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: DateTime<Local>,
     pub lvl: i32,
 }
 
